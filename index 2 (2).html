@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Тренировки</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #F5F6F8;
+    --card: #FFFFFF;
+    --card-inset: #F2F4F7;
+    --text: #14151A;
+    --text-secondary: #8A8F98;
+    --border: rgba(20,21,26,0.06);
+    --blue: #3E8EF7;
+    --blue-soft: rgba(62,142,247,0.12);
+    --orange: #FF8A3D;
+    --orange-soft: rgba(255,138,61,0.14);
+    --shadow: 0 1px 2px rgba(20,21,26,0.04), 0 8px 24px rgba(20,21,26,0.06);
+    --radius-lg: 22px;
+    --radius-md: 16px;
+    --radius-sm: 11px;
+  }
+  [data-theme="dark"] {
+    --bg: #101114;
+    --card: #1B1C20;
+    --card-inset: #232428;
+    --text: #F2F3F5;
+    --text-secondary: #8C8F96;
+    --border: rgba(255,255,255,0.07);
+    --blue: #4E97F8;
+    --blue-soft: rgba(78,151,248,0.16);
+    --orange: #FF9A52;
+    --orange-soft: rgba(255,154,82,0.16);
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 10px 30px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  #app { max-width: 560px; margin: 0 auto; padding: 20px 16px 100px; min-height: 100vh; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .topbar h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.4px; margin: 0; }
+  .theme-toggle {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: var(--shadow); flex-shrink: 0;
+    color: var(--text);
+  }
+  .theme-toggle svg { width: 19px; height: 19px; }
+
+  .plan-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .plan-pill {
+    display: flex; align-items: center; gap: 6px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 100px; padding: 7px 8px 7px 14px;
+    font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow);
+    max-width: 100%; overflow: hidden;
+  }
+  .plan-pill span.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plan-pill svg { width: 14px; height: 14px; color: var(--text-secondary); flex-shrink: 0; }
+  .plan-count-badge {
+    background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 100px; margin-left: 2px;
+  }
+
+  .tabs { display: flex; gap: 6px; background: var(--card-inset); padding: 4px; border-radius: var(--radius-md); margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1 0 auto; text-align: center; padding: 9px 14px; border-radius: 12px;
+    font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer;
+    white-space: nowrap; transition: background 0.2s, color 0.2s; user-select: none;
+    display: flex; align-items: center; gap: 6px; justify-content: center;
+  }
+  .tab.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+  .tab .del-tab { opacity: 0; width: 14px; height: 14px; margin-left: 2px; transition: opacity 0.15s; color: var(--text-secondary); }
+  .tab.active .del-tab { opacity: 0.55; }
+  .tab.add-tab { color: var(--blue); font-size: 18px; font-weight: 700; flex: 0 0 auto; padding: 9px 16px; }
+
+  .day-name-input {
+    width: 100%; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;
+    background: transparent; border: none; color: var(--text);
+    margin-bottom: 2px; padding: 4px 2px; font-family: inherit;
+  }
+  .day-name-input:focus { outline: none; }
+
+  .day-meta-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 10px; }
+  .day-meta { color: var(--text-secondary); font-size: 13px; }
+  .history-link {
+    color: var(--blue); font-size: 13px; font-weight: 600; background: transparent;
+    border: none; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  }
+  .history-link svg { width: 13px; height: 13px; }
+
+  .exercise-card {
+    background: var(--card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .exercise-header { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; }
+  .exercise-name {
+    flex: 1; font-size: 16px; font-weight: 600; background: transparent;
+    border: none; color: var(--text); font-family: inherit; min-width: 0; padding: 2px 0;
+  }
+  .exercise-name:focus { outline: none; }
+  .exercise-progress {
+    font-size: 12px; font-weight: 700; color: var(--orange);
+    background: var(--orange-soft); padding: 4px 9px; border-radius: 100px; flex-shrink: 0;
+  }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: none; background: transparent;
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .icon-btn:active { background: var(--card-inset); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  .sets-table { padding: 0 16px 14px; }
+  .sets-head {
+    display: grid; grid-template-columns: 28px 1fr 1fr 1fr 32px; gap: 8px;
+    font-size: 11px; color: var(--text-secondary); font-weight: 600; padding: 0 2px 6px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .set-row { display: grid; grid-template-columns: 28px 1fr 1fr 1fr 32px; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .set-num { font-size: 13px; color: var(--text-secondary); font-weight: 600; text-align: center; }
+  .set-row input {
+    width: 100%; background: var(--card-inset); border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: 9px 6px; text-align: center; font-size: 15px; font-weight: 600; color: var(--text); font-family: inherit;
+  }
+  .set-row input::-webkit-outer-spin-button, .set-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .set-row input:focus { outline: none; border-color: var(--blue); background: var(--card); }
+  .set-row.done input { color: var(--text-secondary); text-decoration: line-through; }
+
+  .check {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); background: var(--card-inset);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .check.checked { background: var(--orange); border-color: var(--orange); }
+  .check svg { width: 13px; height: 13px; color: white; opacity: 0; transition: opacity 0.1s; }
+  .check.checked svg { opacity: 1; }
+
+  .add-set-btn {
+    display: flex; align-items: center; gap: 6px; color: var(--blue); font-size: 13px; font-weight: 600;
+    background: transparent; border: none; padding: 8px 2px 0; cursor: pointer; font-family: inherit;
+  }
+  .add-exercise-btn {
+    width: 100%; padding: 15px; border-radius: var(--radius-lg); border: 1.5px dashed var(--border);
+    background: transparent; color: var(--blue); font-size: 15px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; margin-top: 4px;
+  }
+  .add-exercise-btn:active { background: var(--blue-soft); }
+
+  .finish-btn {
+    width: 100%; padding: 17px; border-radius: var(--radius-lg); border: none;
+    background: var(--orange); color: white; font-size: 16px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; margin-top: 18px;
+    box-shadow: 0 8px 20px rgba(255,138,61,0.32);
+  }
+  .finish-btn:active { transform: scale(0.98); }
+  .finish-btn svg { width: 18px; height: 18px; }
+
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--text-secondary); }
+  .empty-state div:first-child { font-size: 38px; margin-bottom: 10px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 100px;
+    font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none; z-index: 60; white-space: nowrap; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(10,10,12,0.45); z-index: 70;
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .sheet {
+    background: var(--bg); width: 100%; max-width: 560px; border-radius: 26px 26px 0 0;
+    max-height: 82vh; overflow-y: auto; padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
+    transform: translateY(16px); transition: transform 0.22s;
+  }
+  .overlay.show .sheet { transform: translateY(0); }
+  .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 10px; margin: 0 auto 14px; }
+  .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sheet-header h2 { font-size: 19px; font-weight: 700; margin: 0; }
+
+  .plan-item {
+    display: flex; align-items: center; gap: 10px; padding: 13px 14px; background: var(--card);
+    border-radius: var(--radius-md); margin-bottom: 8px; border: 1px solid var(--border);
+  }
+  .plan-item.active { border-color: var(--blue); }
+  .plan-item .pname { flex: 1; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .plan-item button.icon-btn { color: var(--text-secondary); }
+  .sheet-add-btn {
+    width: 100%; padding: 13px; border-radius: var(--radius-md); border: 1.5px dashed var(--border);
+    background: transparent; color: var(--blue); font-size: 14px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; margin-top: 4px;
+  }
+
+  .hist-entry { background: var(--card); border-radius: var(--radius-md); padding: 14px; margin-bottom: 10px; border: 1px solid var(--border); }
+  .hist-date { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .hist-ex { font-size: 13px; margin-bottom: 4px; color: var(--text); }
+  .hist-ex b { font-weight: 600; }
+  .hist-ex .sets-str { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<div class="overlay" id="overlay"><div class="sheet" id="sheetContent"></div></div>
+
+<script>
+const STORAGE_KEY = 'workout-data-v2';
+const hasCloudStorage = (typeof window.storage !== 'undefined');
+let state = null;
+let saveTimer = null;
+let overlayMode = null; // 'plans' | 'history'
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+function freshDay(name) { return { id: uid(), name, exercises: [], history: [] }; }
+function freshPlan(name) {
+  return { id: uid(), name, days: [freshDay('День 1'), freshDay('День 2'), freshDay('День 3')] };
+}
+function defaultState() {
+  const plan = freshPlan('Моя программа');
+  return { theme: 'light', activePlanId: plan.id, activeDayId: plan.days[0].id, plans: [plan] };
+}
+
+async function loadState() {
+  try {
+    if (hasCloudStorage) {
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if (res && res.value) return migrate(JSON.parse(res.value));
+    } else {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return migrate(JSON.parse(raw));
+    }
+  } catch (e) { /* no saved data yet */ }
+  return defaultState();
+}
+
+function migrate(data) {
+  // ensure every day has a history array (for upgrades from older saves)
+  (data.plans || []).forEach(p => (p.days || []).forEach(d => { if (!d.history) d.history = []; }));
+  return data;
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    const json = JSON.stringify(state);
+    try {
+      if (hasCloudStorage) await window.storage.set(STORAGE_KEY, json, false);
+      else localStorage.setItem(STORAGE_KEY, json);
+    } catch (e) {
+      console.error('Save failed', e);
+      showToast('Не удалось сохранить');
+    }
+  }, 250);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function activePlan() { return state.plans.find(p => p.id === state.activePlanId) || state.plans[0]; }
+function activeDay() {
+  const plan = activePlan();
+  return plan.days.find(d => d.id === state.activeDayId) || plan.days[0];
+}
+
+function icon(name) {
+  const icons = {
+    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.5 12H2M22 12h-2.5M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a.6.6 0 0 0-.8-.7A9.5 9.5 0 1 0 21.2 15.3a.6.6 0 0 0-.7-.8z"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M9 6V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V6m2 0v13a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19V6h10z"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
+    flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4m0 1l14 -1 -4 5 4 5 -14 -1"/></svg>',
+  };
+  return icons[name] || '';
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str ?? '';
+  return d.innerHTML;
+}
+function plural(n) {
+  const m = n % 10, m2 = n % 100;
+  if (m2 >= 11 && m2 <= 14) return 'й';
+  if (m === 1) return 'е';
+  if (m >= 2 && m <= 4) return 'я';
+  return 'й';
+}
+function formatDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) + ', ' +
+    d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+function render() {
+  const app = document.getElementById('app');
+  document.body.setAttribute('data-theme', state.theme);
+  const plan = activePlan();
+  const day = activeDay();
+
+  const planTabsHtml = state.plans.map(p => `
+    <div class="tab ${p.id === state.activePlanId ? 'active' : ''}" data-plan="${p.id}">
+      <span>${escapeHtml(p.name)}</span>
+      ${state.plans.length > 1 ? `<span class="del-tab" data-del-plan="${p.id}">${icon('x')}</span>` : ''}
+    </div>
+  `).join('') + `<div class="tab add-tab" id="addPlanBtn">+</div>`;
+
+  const dayTabsHtml = plan.days.map(d => `
+    <div class="tab ${d.id === state.activeDayId ? 'active' : ''}" data-dayid="${d.id}">
+      <span>${escapeHtml(d.name)}</span>
+      ${plan.days.length > 1 ? `<span class="del-tab" data-del-day="${d.id}">${icon('x')}</span>` : ''}
+    </div>
+  `).join('') + `<div class="tab add-tab" id="addDayBtn">+</div>`;
+
+  let exercisesHtml = '';
+  if (!day.exercises.length) {
+    exercisesHtml = `<div class="empty-state"><div>🏋️</div><div>Пока нет упражнений — добавь первое</div></div>`;
+  } else {
+    exercisesHtml = day.exercises.map(ex => {
+      const doneCount = ex.sets.filter(s => s.done).length;
+      const setsHtml = ex.sets.map((s, i) => `
+        <div class="set-row ${s.done ? 'done' : ''}">
+          <div class="set-num">${i + 1}</div>
+          <input type="number" inputmode="numeric" placeholder="0" value="${s.reps ?? ''}" data-field="reps" data-ex="${ex.id}" data-set="${s.id}">
+          <input type="number" inputmode="decimal" placeholder="0" value="${s.weight ?? ''}" data-field="weight" data-ex="${ex.id}" data-set="${s.id}">
+          <div class="check ${s.done ? 'checked' : ''}" data-toggle-set="${ex.id}:${s.id}">${icon('check')}</div>
+          <button class="icon-btn" data-del-set="${ex.id}:${s.id}">${icon('trash')}</button>
+        </div>
+      `).join('');
+      return `
+        <div class="exercise-card">
+          <div class="exercise-header">
+            <input class="exercise-name" value="${escapeHtml(ex.name)}" placeholder="Название упражнения" data-ex-name="${ex.id}">
+            <span class="exercise-progress">${doneCount}/${ex.sets.length}</span>
+            <button class="icon-btn" data-del-ex="${ex.id}">${icon('trash')}</button>
+          </div>
+          <div class="sets-table">
+            <div class="sets-head"><div></div><div>Повт</div><div>Вес, кг</div><div></div><div></div></div>
+            ${setsHtml}
+            <button class="add-set-btn" data-add-set="${ex.id}">${icon('plus')} Подход</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const lastSession = day.history[day.history.length - 1];
+  const metaText = lastSession
+    ? `Последний раз: ${formatDate(lastSession.date)}`
+    : `${day.exercises.length} упражнени${plural(day.exercises.length)} · ещё не выполнялось`;
+
+  app.innerHTML = `
+    <div class="topbar">
+      <h1>Тренировки</h1>
+      <div class="theme-toggle" id="themeToggle">${icon(state.theme === 'dark' ? 'moon' : 'sun')}</div>
+    </div>
+    <div class="plan-row">
+      <div class="plan-pill" id="openPlans">
+        <span class="name">${escapeHtml(plan.name)}</span>
+        <span class="plan-count-badge">${state.plans.length}</span>
+        ${icon('chevron')}
+      </div>
+    </div>
+    <div class="tabs" id="dayTabs">${dayTabsHtml}</div>
+    <input class="day-name-input" id="dayNameInput" value="${escapeHtml(day.name)}" placeholder="Название дня">
+    <div class="day-meta-row">
+      <div class="day-meta">${metaText}</div>
+      <button class="history-link" id="openHistory">${icon('clock')} История (${day.history.length})</button>
+    </div>
+    <div id="exercisesWrap">${exercisesHtml}</div>
+    <button class="add-exercise-btn" id="addExerciseBtn">${icon('plus')} Добавить упражнение</button>
+    <button class="finish-btn" id="finishBtn">${icon('flag')} Завершить тренировку</button>
+  `;
+
+  attachHandlers();
+}
+
+function openOverlay(mode) {
+  overlayMode = mode;
+  const overlay = document.getElementById('overlay');
+  const sheet = document.getElementById('sheetContent');
+  if (mode === 'plans') sheet.innerHTML = plansSheetHtml();
+  if (mode === 'history') sheet.innerHTML = historySheetHtml();
+  overlay.classList.add('show');
+  attachOverlayHandlers();
+}
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('show');
+  overlayMode = null;
+}
+
+function plansSheetHtml() {
+  const items = state.plans.map(p => `
+    <div class="plan-item ${p.id === state.activePlanId ? 'active' : ''}">
+      <span class="pname" data-select-plan="${p.id}">${escapeHtml(p.name)}</span>
+      <button class="icon-btn" data-rename-plan="${p.id}">✎</button>
+      ${state.plans.length > 1 ? `<button class="icon-btn" data-remove-plan="${p.id}">${icon('trash')}</button>` : ''}
+    </div>
+  `).join('');
+  return `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h2>Мои программы</h2><button class="icon-btn" id="closeSheet">${icon('x')}</button></div>
+    ${items}
+    <button class="sheet-add-btn" id="addPlanBtn2">${icon('plus')} Новая программа</button>
+  `;
+}
+
+function historySheetHtml() {
+  const day = activeDay();
+  if (!day.history.length) {
+    return `
+      <div class="sheet-handle"></div>
+      <div class="sheet-header"><h2>История — ${escapeHtml(day.name)}</h2><button class="icon-btn" id="closeSheet">${icon('x')}</button></div>
+      <div class="empty-state"><div>📋</div><div>Здесь появятся завершённые тренировки</div></div>
+    `;
+  }
+  const entries = [...day.history].reverse().map(h => {
+    const exHtml = h.exercises.map(ex => {
+      const setsStr = ex.sets.map(s => `${s.weight || 0}×${s.reps || 0}${s.done ? '' : ' (не отмечено)'}`).join(', ');
+      return `<div class="hist-ex"><b>${escapeHtml(ex.name || 'Упражнение')}:</b> <span class="sets-str">${setsStr}</span></div>`;
+    }).join('');
+    return `<div class="hist-entry"><div class="hist-date">${formatDate(h.date)}</div>${exHtml}</div>`;
+  }).join('');
+  return `
+    <div class="sheet-handle"></div>
+    <div class="sheet-header"><h2>История — ${escapeHtml(day.name)}</h2><button class="icon-btn" id="closeSheet">${icon('x')}</button></div>
+    ${entries}
+  `;
+}
+
+function attachOverlayHandlers() {
+  document.getElementById('overlay').onclick = (e) => { if (e.target.id === 'overlay') closeOverlay(); };
+  const closeBtn = document.getElementById('closeSheet');
+  if (closeBtn) closeBtn.onclick = closeOverlay;
+
+  if (overlayMode === 'plans') {
+    document.querySelectorAll('[data-select-plan]').forEach(el => {
+      el.onclick = () => {
+        state.activePlanId = el.dataset.selectPlan;
+        state.activeDayId = activePlan().days[0].id;
+        closeOverlay(); render(); scheduleSave();
+      };
+    });
+    document.querySelectorAll('[data-rename-plan]').forEach(el => {
+      el.onclick = () => {
+        const p = state.plans.find(pl => pl.id === el.dataset.renamePlan);
+        const name = prompt('Название программы', p.name);
+        if (name && name.trim()) { p.name = name.trim(); openOverlay('plans'); render(); scheduleSave(); }
+      };
+    });
+    document.querySelectorAll('[data-remove-plan]').forEach(el => {
+      el.onclick = () => {
+        if (state.plans.length <= 1) return;
+        if (!confirm('Удалить эту программу вместе со всеми днями и историей?')) return;
+        const id = el.dataset.removePlan;
+        state.plans = state.plans.filter(p => p.id !== id);
+        if (state.activePlanId === id) {
+          state.activePlanId = state.plans[0].id;
+          state.activeDayId = state.plans[0].days[0].id;
+        }
+        openOverlay('plans'); render(); scheduleSave();
+      };
+    });
+    const addBtn2 = document.getElementById('addPlanBtn2');
+    if (addBtn2) addBtn2.onclick = () => {
+      const p = freshPlan('Новая программа ' + (state.plans.length + 1));
+      state.plans.push(p);
+      state.activePlanId = p.id;
+      state.activeDayId = p.days[0].id;
+      closeOverlay(); render(); scheduleSave();
+    };
+  }
+}
+
+function attachHandlers() {
+  document.getElementById('themeToggle').onclick = () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    render(); scheduleSave(); setupTelegram();
+  };
+  document.getElementById('openPlans').onclick = () => openOverlay('plans');
+  document.getElementById('openHistory').onclick = () => openOverlay('history');
+
+  document.getElementById('addDayBtn').onclick = () => {
+    const plan = activePlan();
+    const newDay = freshDay('День ' + (plan.days.length + 1));
+    plan.days.push(newDay);
+    state.activeDayId = newDay.id;
+    render(); scheduleSave();
+  };
+
+  document.querySelectorAll('[data-dayid]').forEach(el => {
+    el.onclick = (e) => {
+      if (e.target.closest('[data-del-day]')) return;
+      state.activeDayId = el.dataset.dayid;
+      render();
+    };
+  });
+  document.querySelectorAll('[data-del-day]').forEach(el => {
+    el.onclick = (e) => {
+      e.stopPropagation();
+      const plan = activePlan();
+      if (plan.days.length <= 1) return;
+      if (!confirm('Удалить этот день вместе с историей тренировок?')) return;
+      const id = el.dataset.delDay;
+      plan.days = plan.days.filter(d => d.id !== id);
+      if (state.activeDayId === id) state.activeDayId = plan.days[0].id;
+      render(); scheduleSave();
+    };
+  });
+
+  const dayNameInput = document.getElementById('dayNameInput');
+  dayNameInput.oninput = () => { activeDay().name = dayNameInput.value; scheduleSave(); };
+  dayNameInput.onblur = render;
+
+  document.getElementById('addExerciseBtn').onclick = () => {
+    activeDay().exercises.push({ id: uid(), name: '', sets: [{ id: uid(), reps: '', weight: '', done: false }] });
+    render(); scheduleSave();
+    const inputs = document.querySelectorAll('.exercise-name');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  };
+
+  document.querySelectorAll('[data-ex-name]').forEach(el => {
+    el.oninput = () => { activeDay().exercises.find(x => x.id === el.dataset.exName).name = el.value; scheduleSave(); };
+  });
+  document.querySelectorAll('[data-del-ex]').forEach(el => {
+    el.onclick = () => {
+      const day = activeDay();
+      day.exercises = day.exercises.filter(x => x.id !== el.dataset.delEx);
+      render(); scheduleSave();
+    };
+  });
+  document.querySelectorAll('[data-add-set]').forEach(el => {
+    el.onclick = () => {
+      const ex = activeDay().exercises.find(x => x.id === el.dataset.addSet);
+      const last = ex.sets[ex.sets.length - 1];
+      ex.sets.push({ id: uid(), reps: last ? last.reps : '', weight: last ? last.weight : '', done: false });
+      render(); scheduleSave();
+    };
+  });
+  document.querySelectorAll('[data-del-set]').forEach(el => {
+    el.onclick = () => {
+      const [exId, setId] = el.dataset.delSet.split(':');
+      const ex = activeDay().exercises.find(x => x.id === exId);
+      ex.sets = ex.sets.filter(s => s.id !== setId);
+      render(); scheduleSave();
+    };
+  });
+  document.querySelectorAll('[data-toggle-set]').forEach(el => {
+    el.onclick = () => {
+      const [exId, setId] = el.dataset.toggleSet.split(':');
+      const ex = activeDay().exercises.find(x => x.id === exId);
+      const s = ex.sets.find(s => s.id === setId);
+      s.done = !s.done;
+      render(); scheduleSave();
+    };
+  });
+  document.querySelectorAll('input[data-field]').forEach(el => {
+    el.oninput = () => {
+      const ex = activeDay().exercises.find(x => x.id === el.dataset.ex);
+      const s = ex.sets.find(s => s.id === el.dataset.set);
+      s[el.dataset.field] = el.value;
+      scheduleSave();
+    };
+  });
+
+  document.getElementById('finishBtn').onclick = () => {
+    const day = activeDay();
+    if (!day.exercises.length) { showToast('Сначала добавь упражнения'); return; }
+    const anyChecked = day.exercises.some(ex => ex.sets.some(s => s.done));
+    if (!anyChecked && !confirm('Ни один подход не отмечен. Всё равно сохранить тренировку в историю?')) return;
+    const snapshot = {
+      id: uid(),
+      date: Date.now(),
+      exercises: day.exercises.map(ex => ({
+        name: ex.name,
+        sets: ex.sets.map(s => ({ reps: s.reps, weight: s.weight, done: s.done }))
+      }))
+    };
+    day.history.push(snapshot);
+    day.exercises.forEach(ex => ex.sets.forEach(s => { s.done = false; }));
+    render(); scheduleSave();
+    showToast('Тренировка сохранена в историю 💪');
+  };
+}
+
+function setupTelegram() {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (!tg) return;
+  try {
+    tg.ready();
+    tg.expand();
+    const bg = state.theme === 'dark' ? '#101114' : '#F5F6F8';
+    tg.setHeaderColor && tg.setHeaderColor(bg);
+    tg.setBackgroundColor && tg.setBackgroundColor(bg);
+    tg.disableVerticalSwipes && tg.disableVerticalSwipes();
+  } catch (e) { /* older Telegram client, ignore unsupported calls */ }
+}
+
+(async function init() {
+  state = await loadState();
+  render();
+  setupTelegram();
+})();
+</script>
+</body>
+</html>
